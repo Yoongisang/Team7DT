@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -6,6 +6,8 @@
 #include "Team7DTPawn.h"
 #include "Team7DTSportsCar.generated.h"
 
+class UCameraSensorComponent;
+class ULidarSensorComponent;
 /**
  *  Sports car wheeled vehicle implementation
  */
@@ -17,4 +19,10 @@ class TEAM7DT_API ATeam7DTSportsCar : public ATeam7DTPawn
 public:
 
 	ATeam7DTSportsCar();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sensor")
+	UCameraSensorComponent* CameraSensor;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sensor")
+	ULidarSensorComponent* LidarSensor;
 };
