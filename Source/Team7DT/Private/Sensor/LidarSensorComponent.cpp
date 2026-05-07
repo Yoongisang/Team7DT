@@ -1,7 +1,6 @@
 ﻿// LidarSensorComponent.cpp
 
-#include "LidarSensorComponent.h"
-
+#include "Sensor/LidarSensorComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
@@ -28,15 +27,19 @@ void ULidarSensorComponent::TickComponent(
 		TickType,
 		ThisTickFunction
 	);
-
+	
+	if (bScanning == false) 
+		return;
+	
 	AActor* Owner = GetOwner();
 
 	if (!Owner)
 	{
 		return;
 	}
-
-	LidarPoints.Empty();
+	// 포인트 클라우드 초기화 
+	LastPointCloud.Reset();
+	LastPointCloud.SensorTransform = Owner->GetActorTransform();
 
 	FVector Origin =
 		Owner->GetActorLocation()
@@ -68,8 +71,6 @@ void ULidarSensorComponent::TickComponent(
 				ECC_Visibility
 			);
 
-			FLidarPoint PointData;
-
 			if (bHit)
 			{
 				float Noise =
@@ -77,18 +78,19 @@ void ULidarSensorComponent::TickComponent(
 
 				float FinalDistance =
 					Hit.Distance + Noise;
-
-				PointData.Location =
-					Origin + Direction * FinalDistance;
-
-				PointData.Distance = FinalDistance;
-				PointData.bHit = true;
+				
+				FVector HitPoint = Origin + Direction * FinalDistance;
+				
+				LastPointCloud.Points.Add(HitPoint);
+				LastPointCloud.Intensities.Add(
+					FMath::Clamp(1.f - (FinalDistance / MaxDistance), 0.f, 1.f));
+				
 
 				if (bDrawDebug)
 				{
 					DrawDebugPoint(
 						GetWorld(),
-						PointData.Location,
+						HitPoint,
 						8.0f,
 						FColor::Red,
 						false,
@@ -98,7 +100,7 @@ void ULidarSensorComponent::TickComponent(
 					DrawDebugLine(
 						GetWorld(),
 						Origin,
-						PointData.Location,
+						HitPoint,
 						FColor::Green,
 						false,
 						0.05f,
@@ -107,33 +109,36 @@ void ULidarSensorComponent::TickComponent(
 					);
 				}
 			}
-			else
+			else if (bDrawDebug)
 			{
-				PointData.Location = End;
-				PointData.Distance = MaxDistance;
-				PointData.bHit = false;
 
-				if (bDrawDebug)
-				{
-					DrawDebugLine(
-						GetWorld(),
-						Origin,
-						End,
-						FColor::Blue,
-						false,
-						0.05f,
-						0,
-						0.5f
-					);
-				}
+				DrawDebugLine(
+					GetWorld(),
+					Origin,
+					End,
+					FColor::Blue,
+					false,
+					0.05f,
+					0,
+					0.5f
+				);
 			}
-
-			LidarPoints.Add(PointData);
 		}
 	}
+	LastPointCloud.PointCount  = LastPointCloud.Points.Num();
+	LastPointCloud.FrameNumber = ++FrameCount;
+
+	OnPointCloudUpdated.Broadcast(LastPointCloud);
 }
 
-const TArray<FLidarPoint>& ULidarSensorComponent::GetLidarPoints() const
+void ULidarSensorComponent::StartScan()
 {
-	return LidarPoints;
+	bScanning = true;
+	SetComponentTickEnabled(true);
+}
+
+void ULidarSensorComponent::StopScan()
+{
+	bScanning = false;
+	SetComponentTickEnabled(false);
 }

@@ -1,15 +1,47 @@
 #include "DataVisual/Team7DTAgentDataLoggerComponent.h"
-
 #include "DrawDebugHelpers.h"
-#include "ChaosWheeledVehicleMovementComponent.h"
 #include "HAL/PlatformFileManager.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 
 UTeam7DTAgentDataLoggerComponent::UTeam7DTAgentDataLoggerComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
-	PrimaryComponentTick.bStartWithTickEnabled = true;
+	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bStartWithTickEnabled = false;
+}
+
+void UTeam7DTAgentDataLoggerComponent::HandleDriveState(const FDriveState& State)
+{
+	if (bIsRecording == false) 
+		return;
+
+	// UTM 변환
+	double UtmEasting = 0.0;
+	double UtmNorthing = 0.0;
+	WorldToUtm(State.Location, UtmEasting, UtmNorthing);
+
+	// CSV append
+	const FString Row = FString::Printf(
+		TEXT("%.3f,%.2f,%.2f,%.2f,%.4f,%.4f,%d,%.2f,%.4f\n"),
+		State.TimeStamp,
+		State.Location.X, State.Location.Y, State.Location.Z,
+		UtmEasting, UtmNorthing, OriginUtmZone,
+		State.SpeedKmh,
+		State.Rotation.Yaw
+	);
+
+	FFileHelper::SaveStringToFile(Row, *CsvFilePath,
+		FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM,
+		&IFileManager::Get(),
+		EFileWrite::FILEWRITE_Append);
+	
+	// 트래젝토리 시각화 (속도에 따라 색 변화)
+	Alpha = FMath::Clamp(State.SpeedKmh / MaxSpeedForDebug, 0.f, 1.f);
+	const FLinearColor LerpedColor = FLinearColor::LerpUsingHSV(Green, Red, Alpha);
+	const FColor FinalColor = LerpedColor.ToFColor(true);
+
+	DrawDebugLine(GetWorld(), LastLocation, State.Location, FinalColor, false, 10.f, 0, 2.f);
+	LastLocation = State.Location;
 }
 
 
@@ -21,7 +53,6 @@ void UTeam7DTAgentDataLoggerComponent::BeginPlay()
 	if (OwnerPawn)
 	{
 		LastLocation = OwnerPawn->GetActorLocation();
-		VehicleMovement = OwnerPawn->FindComponentByClass<UChaosWheeledVehicleMovementComponent>();
 	}
 
 	OriginUtmZone = GetUtmZone(OriginLongitude);
@@ -37,36 +68,6 @@ void UTeam7DTAgentDataLoggerComponent::EndPlay(EEndPlayReason::Type EndPlayReaso
 {
 	StopRecording();
 	Super::EndPlay(EndPlayReason);
-}
-
-void UTeam7DTAgentDataLoggerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	if (!bIsRecording)
-	{
-		return;
-	}
-
-	ElapsedRecordingTime += DeltaTime;
-	TimeSinceLastSave += DeltaTime;
-
-	const float SaveInterval = 1.0f / FMath::Max(SaveFrequencyHz, 0.1f);
-	if (TimeSinceLastSave >= SaveInterval)
-	{
-		AppendRow();
-		TimeSinceLastSave -= SaveInterval;
-
-		FVector CurrentLocation = GetOwner()->GetActorLocation();
-		float CurrentSpeed = FMath::Abs(VehicleMovement->GetForwardSpeed()) * 0.036f;
-		Alpha = FMath::Clamp(CurrentSpeed / MaxSpeedForDebug, 0.f, 1.f);
-		FLinearColor LerpedLinearColor = FLinearColor::LerpUsingHSV(Green, Red, Alpha);
-		FColor FinalColor = LerpedLinearColor.ToFColor(true);
-
-		DrawDebugLine(GetWorld(), LastLocation, CurrentLocation, FinalColor, false, 10.f, 0, 2.f);
-
-		LastLocation = CurrentLocation;
-	}
 }
 
 int32 UTeam7DTAgentDataLoggerComponent::GetUtmZone(double Longitude)
@@ -136,39 +137,6 @@ void UTeam7DTAgentDataLoggerComponent::WorldToUtm(const FVector& WorldLocation, 
 	OutNorthing = OriginUtmNorthing + OffsetNorthM;
 }
 
-void UTeam7DTAgentDataLoggerComponent::AppendRow()
-{
-	const AActor* Owner = GetOwner();
-	if (!Owner)
-		return;
-
-	const FVector WorldLoc = Owner->GetActorLocation();        // cm
-	const FRotator WorldRot = Owner->GetActorRotation();
-	const FVector Velocity = Owner->GetVelocity();             // cm/s
-
-	const double SpeedKmh = Velocity.Size() * 0.01 * 3.6;
-	const double Yaw = WorldRot.Yaw;
-
-	double UtmEasting = 0.0;
-	double UtmNorthing = 0.0;
-	WorldToUtm(WorldLoc, UtmEasting, UtmNorthing);
-
-	const FString Row = FString::Printf(
-		TEXT("%.3f,%.2f,%.2f,%.2f,%.4f,%.4f,%d,%.2f,%.4f\n"),
-		ElapsedRecordingTime,
-		WorldLoc.X, WorldLoc.Y, WorldLoc.Z,
-		UtmEasting, UtmNorthing, OriginUtmZone,
-		SpeedKmh,
-		Yaw
-	);
-
-	FFileHelper::SaveStringToFile(Row, *CsvFilePath,
-		FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM,
-		&IFileManager::Get(),
-		EFileWrite::FILEWRITE_Append
-	);
-}
-
 void UTeam7DTAgentDataLoggerComponent::StartRecording()
 {
 	if (bIsRecording)
@@ -178,8 +146,6 @@ void UTeam7DTAgentDataLoggerComponent::StartRecording()
 
 	CreateCsvFile();
 	bIsRecording = true;
-	TimeSinceLastSave = 0.0f;
-	ElapsedRecordingTime = 0.0f;
 }
 
 void UTeam7DTAgentDataLoggerComponent::StopRecording()
@@ -209,5 +175,5 @@ void UTeam7DTAgentDataLoggerComponent::CreateCsvFile()
 		FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM
 	);
 
-	UE_LOG(LogTemp, Log, TEXT("[AgentDataLogger] Recording to: %s  (%.1f Hz)"), *CsvFilePath, SaveFrequencyHz);
+	UE_LOG(LogTemp, Log, TEXT("[AgentDataLogger] Recording to: %s"), *CsvFilePath);
 }

@@ -1,5 +1,4 @@
-﻿#include "Team7DT/Public/Sensor/LidarBevRenderer.h"
-
+﻿#include "Sensor/LidarBevRenderer.h"
 #include "Microsoft/AllowMicrosoftPlatformTypes.h"
 
 void ULidarBevRenderer::Initialize(const FBevRenderConfig& InConfig)
@@ -70,7 +69,7 @@ void ULidarBevRenderer::RenderPointCloud(const FLidarPointCloudData& PointCloud,
 				const int32 Row = (CY + dy) * ImgSize;
 				for (int32 dx = -PtHalf; dx < PtSize - PtHalf; ++dx)
 				{
-					Pixels[Row * CX + dx] = Color;
+					Pixels[Row + CX + dx] = Color;
 				}
 			}
 		}
@@ -107,6 +106,11 @@ void ULidarBevRenderer::UpdateConfig(const FBevRenderConfig& InConfig)
 	{
 		CreateTexture();
 	}
+}
+
+void ULidarBevRenderer::HandlePointCloud(const FLidarPointCloudData& PointCloud)
+{
+	RenderPointCloud(PointCloud, PointCloud.SensorTransform);
 }
 
 void ULidarBevRenderer::CreateTexture()

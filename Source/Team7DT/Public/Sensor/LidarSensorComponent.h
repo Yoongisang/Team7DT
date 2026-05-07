@@ -4,22 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Sensor/SensorTypes.h"
 #include "LidarSensorComponent.generated.h"
 
-USTRUCT(BlueprintType)
-struct FLidarPoint
-{
-	GENERATED_BODY()
-
-	UPROPERTY(BlueprintReadOnly)
-	FVector Location;
-
-	UPROPERTY(BlueprintReadOnly)
-	float Distance = 0.0f;
-
-	UPROPERTY(BlueprintReadOnly)
-	bool bHit = false;
-};
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnPointCloudUpdated, const FLidarPointCloudData&);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class TEAM7DT_API ULidarSensorComponent : public UActorComponent
@@ -28,6 +16,17 @@ class TEAM7DT_API ULidarSensorComponent : public UActorComponent
 
 public:
 	ULidarSensorComponent();
+	
+	UFUNCTION(BlueprintCallable, Category="LiDAR")
+	void StartScan();
+
+	UFUNCTION(BlueprintCallable, Category="LiDAR")
+	void StopScan();
+
+	UFUNCTION(BlueprintPure, Category="LiDAR")
+	const FLidarPointCloudData& GetPointCloud() const { return LastPointCloud; }
+	
+	FOnPointCloudUpdated OnPointCloudUpdated;
 
 protected:
 	virtual void BeginPlay() override;
@@ -64,13 +63,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LiDAR")
 	bool bDrawDebug = true;
 
-	// LiDAR 결과 저장
-	UPROPERTY(BlueprintReadOnly, Category = "LiDAR")
-	TArray<FLidarPoint> LidarPoints;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LiDAR")
 	FVector SensorOffset = FVector(0.0f, 0.0f, 0.0f);
-
-	UFUNCTION(BlueprintCallable, Category = "LiDAR")
-	const TArray<FLidarPoint>& GetLidarPoints() const;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="LiDAR")
+	FLidarPointCloudData LastPointCloud;
+	
+private:
+	bool bScanning = true;
+	int64 FrameCount = 0;
 };

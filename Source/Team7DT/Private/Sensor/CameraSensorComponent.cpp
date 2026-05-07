@@ -1,4 +1,4 @@
-﻿#include "CameraSensorComponent.h"
+﻿#include "Sensor/CameraSensorComponent.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "GameFramework/Actor.h"
