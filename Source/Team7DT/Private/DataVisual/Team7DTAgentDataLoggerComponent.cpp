@@ -22,13 +22,8 @@ void UTeam7DTAgentDataLoggerComponent::BeginPlay()
 	{
 		LastLocation = OwnerPawn->GetActorLocation();
 		VehicleMovement = OwnerPawn->FindComponentByClass<UChaosWheeledVehicleMovementComponent>();
-
-		if (VehicleMovement)
-		{
-			MaxSpeed = VehicleMovement->GetMaxSpeed();
-		}
 	}
-	
+
 	OriginUtmZone = GetUtmZone(OriginLongitude);
 	LatLonToUtm(OriginLatitude, OriginLongitude, OriginUtmZone, OriginUtmEasting, OriginUtmNorthing);
 
@@ -63,9 +58,9 @@ void UTeam7DTAgentDataLoggerComponent::TickComponent(float DeltaTime, ELevelTick
 		TimeSinceLastSave -= SaveInterval;
 
 		FVector CurrentLocation = GetOwner()->GetActorLocation();
-		float CurrentSpeed = (CurrentLocation - LastLocation).Size() / TimeSinceLastSave;
-		Alpha = FMath::Clamp(CurrentSpeed / MaxSpeed, 0.f, 1.f);
-		FLinearColor LerpedLinearColor = FLinearColor::LerpUsingHSV(Blue, Red, Alpha);
+		float CurrentSpeed = FMath::Abs(VehicleMovement->GetForwardSpeed()) * 0.036f;
+		Alpha = FMath::Clamp(CurrentSpeed / MaxSpeedForDebug, 0.f, 1.f);
+		FLinearColor LerpedLinearColor = FLinearColor::LerpUsingHSV(Green, Red, Alpha);
 		FColor FinalColor = LerpedLinearColor.ToFColor(true);
 
 		DrawDebugLine(GetWorld(), LastLocation, CurrentLocation, FinalColor, false, 10.f, 0, 2.f);

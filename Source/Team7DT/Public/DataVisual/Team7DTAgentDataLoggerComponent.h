@@ -57,15 +57,16 @@ private:
 	UPROPERTY()
 	UChaosWheeledVehicleMovementComponent* VehicleMovement;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Logger|Max Speed", meta = (AllowPrivateAccess = "true"))
+	float MaxSpeedForDebug = 150.f; //km/h
+
 protected:
 	float Alpha = 0.f;
 
 private:
 	FVector LastLocation = FVector::ZeroVector;
-	float LastSpeed = 0.f;
-	float MaxSpeed = 0.f;
 		
-	FLinearColor Blue = FLinearColor::Blue;
+	FLinearColor Green = FLinearColor::Green;
 	FLinearColor Red = FLinearColor::Red;
 
 private:
