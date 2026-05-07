@@ -67,4 +67,18 @@ private:
 
 	FString CsvFilePath;
 	bool bIsRecording = false;
+	
+	// 가속도 계산용
+	float PreviousSpeedKmh   = 0.f;
+	float PreviousTimeStamp  = 0.f;
+
+	// 급감속 임계값 (km/h/s)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data Logger|Visualization", meta=(AllowPrivateAccess="true"))
+	float HardBrakeThreshold = -50.f;
+
+	// DrawDebugString 표시 간격 (cm)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data Logger|Visualization", meta=(AllowPrivateAccess="true"))
+	float DebugStringInterval = 500.f;
+
+	FVector LastDebugStringLocation = FVector::ZeroVector;
 };

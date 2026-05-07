@@ -48,11 +48,9 @@ public:
 
 	// 수직 채널 각도
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LiDAR")
-	TArray<float> ChannelElevations =
-	{
-		-10.0f,
-		0.0f,
-		10.0f
+	TArray<float> ChannelElevations = {
+		-15.f, -13.f, -11.f, -9.f, -7.f, -5.f, -3.f, -1.f,
+		 1.f,   3.f,   5.f,  7.f,  9.f, 11.f, 13.f, 15.f
 	};
 
 	// 거리 노이즈
