@@ -1,0 +1,81 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
+#include "Team7DTAgentDataLoggerComponent.generated.h"
+
+class UChaosWheeledVehicleMovementComponent;
+
+UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+class TEAM7DT_API UTeam7DTAgentDataLoggerComponent : public UActorComponent
+{
+	GENERATED_BODY()
+
+public:	
+	UTeam7DTAgentDataLoggerComponent();
+
+protected:
+	virtual void BeginPlay() override;
+	virtual void EndPlay(EEndPlayReason::Type EndPlayReason) override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+private:
+	static int32 GetUtmZone(double Longitude);
+	static void LatLonToUtm(double Lat, double Lon, int32 Zone, double& OutEasting, double& OutNorthing);
+	void WorldToUtm(const FVector& WorldLocation, double& OutEasting, double& OutNorthing) const;
+	void CreateCsvFile();
+	void AppendRow();
+
+	UFUNCTION(BlueprintCallable, Category = "Data Logger")
+	void StartRecording();
+
+	UFUNCTION(BlueprintCallable, Category = "Data Logger")
+	void StopRecording();
+
+	UFUNCTION(BlueprintPure, Category = "Data Logger")
+	bool IsRecording() const { return bIsRecording; }
+
+private:
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Logger",
+		meta = (AllowPrivateAccess = "true"))
+	bool bEnableLogging = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Logger",
+		meta = (ClampMin = "0.1", ClampMax = "100.0", Units = "Hz", AllowPrivateAccess = "true"))
+	float SaveFrequencyHz = 10.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Logger|UTM Reference",
+		meta = (ClampMin = "-90.0", ClampMax = "90.0", Units = "deg", AllowPrivateAccess = "true"))
+	double OriginLatitude = 36.4800;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Logger|UTM Reference",
+		meta = (ClampMin = "-180.0", ClampMax = "180.0", Units = "deg", AllowPrivateAccess = "true"))
+	double OriginLongitude = 127.0000;
+
+
+	UPROPERTY()
+	UChaosWheeledVehicleMovementComponent* VehicleMovement;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Logger|Max Speed", meta = (AllowPrivateAccess = "true"))
+	float MaxSpeedForDebug = 150.f; //km/h
+
+protected:
+	float Alpha = 0.f;
+
+private:
+	FVector LastLocation = FVector::ZeroVector;
+		
+	FLinearColor Green = FLinearColor::Green;
+	FLinearColor Red = FLinearColor::Red;
+
+private:
+	double OriginUtmEasting = 0.0;
+	double OriginUtmNorthing = 0.0;
+	int32 OriginUtmZone = 0;
+
+	FString CsvFilePath;
+	bool bIsRecording = false;
+	float TimeSinceLastSave = 0.0f;
+	float ElapsedRecordingTime = 0.0f;
+};
