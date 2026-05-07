@@ -1,9 +1,11 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 
 #include "Team7DTSportsCar.h"
 #include "Team7DTSportsWheelFront.h"
 #include "Team7DTSportsWheelRear.h"
+#include "Sensor/CameraSensorComponent.h"
+#include "Sensor/LidarSensorComponent.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 
 ATeam7DTSportsCar::ATeam7DTSportsCar()
@@ -66,4 +68,7 @@ ATeam7DTSportsCar::ATeam7DTSportsCar()
 	// NOTE: Check the Blueprint asset for the Steering Curve
 	GetChaosVehicleMovement()->SteeringSetup.SteeringType = ESteeringType::Ackermann;
 	GetChaosVehicleMovement()->SteeringSetup.AngleRatio = 0.7f;
+
+	CameraSensor = CreateDefaultSubobject<UCameraSensorComponent>(TEXT("CameraSensor"));
+	LidarSensor = CreateDefaultSubobject<ULidarSensorComponent>(TEXT("LidarSensor"));
 }
