@@ -9,7 +9,9 @@
 
 ## 🎬 시연 영상
 
-> (https://youtu.be/P9ZdJjwxMa0)
+[![시연 영상](https://img.youtube.com/vi/P9ZdJjwxMa0/maxresdefault.jpg)](https://youtu.be/P9ZdJjwxMa0)
+
+▶️ **[YouTube에서 보기](https://youtu.be/P9ZdJjwxMa0)**
 
 브랜치 구조:
 ```
