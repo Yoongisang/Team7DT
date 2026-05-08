@@ -71,6 +71,8 @@ void ATeam7DTVehicle::DoSteering(float SteeringValue)
 
 void ATeam7DTVehicle::DoThrottle(float ThrottleValue)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[DoThrottle] Value: %.3f"), ThrottleValue);
+    
 	CurrentThrottle = ThrottleValue;
 	CurrentBrake    = 0.f;
 	ChaosVehicleMovement->SetThrottleInput(ThrottleValue);
@@ -148,6 +150,17 @@ void ATeam7DTVehicle::BeginPlay()
 	Super::BeginPlay();
 	// BevRenderer 동적 생성 (UObject라 CreateDefaultSubobject 안 됨)
 	BevRenderer = NewObject<ULidarBevRenderer>(this, TEXT("BevRenderer"));
+	
+	if (BevRenderer)
+	{
+		FBevRenderConfig DefaultConfig;
+		DefaultConfig.ViewRange = 4000.f;   
+		DefaultConfig.PointSize = 3.f;         
+		DefaultConfig.ImageSize = 512;         
+		BevRenderer->Initialize(DefaultConfig);
+	}
+
+	
 	// 델리게이트 연결
 	WireComponents();   
 

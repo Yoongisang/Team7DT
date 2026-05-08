@@ -62,11 +62,14 @@ void UCameraSensorComponent::ApplyCameraPreset()
 
     SceneCapture->TextureTarget = RenderTarget;
 
-    if (UMaterialInstanceDynamic* DynMat =
-        Cast<UMaterialInstanceDynamic>(
-            SceneCapture->PostProcessSettings.WeightedBlendables.Array[0].Object))
+    if (SceneCapture->PostProcessSettings.WeightedBlendables.Array.Num() > 0)
     {
-        DynMat->SetScalarParameterValue(TEXT("K1"), K1);
+        if (UMaterialInstanceDynamic* DynMat =
+            Cast<UMaterialInstanceDynamic>(
+                SceneCapture->PostProcessSettings.WeightedBlendables.Array[0].Object))
+        {
+            DynMat->SetScalarParameterValue(TEXT("K1"), K1);
+        }
     }
 }
 

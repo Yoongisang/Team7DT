@@ -287,6 +287,7 @@ void USplineFollowerComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
                                               FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	
 	if (OwnerPawn.IsValid() == false)
 	{
 		UE_LOG(LogPathFollowingComponent, Error, TEXT("Failed to cache OwnerPawn."));
@@ -318,9 +319,8 @@ void USplineFollowerComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 
 	if (!bClosedLoop && CurrentPointIndex >= PathPoints.Num() - 2)
 	{
-		// 주석처리
-		// OwnerPawn->DoThrottle(0.f);
-		// OwnerPawn->DoBrakeStart();
+		OwnerPawn->DoThrottle(0.f);
+		OwnerPawn->DoBrakeStart();
 		return;
 	}
 
@@ -378,8 +378,8 @@ void USplineFollowerComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 		-1.f, 1.f
 	);
 	
-	// 주석처리	
-	// OwnerPawn->DoSteering(Steer);
+	
+	OwnerPawn->DoSteering(Steer);
 
 	// ---- Speed ----
 	const float SpeedLimit = FMath::Min(
@@ -399,14 +399,14 @@ void USplineFollowerComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 		-1.f, 1.f
 	);
 	
-	// 주석처리
-	// if (Cmd > 0.05f)
-	// 	OwnerPawn->DoThrottle(Cmd);
-	// else if (Cmd < -0.05f)
-	// 	OwnerPawn->DoBrake(-Cmd);
-	// else
-	// {
-	// 	OwnerPawn->DoThrottle(0.f);
-	// 	OwnerPawn->DoBrake(0.f);
-	// }
+
+	if (Cmd > 0.05f)
+		OwnerPawn->DoThrottle(Cmd);
+	else if (Cmd < -0.05f)
+		OwnerPawn->DoBrake(-Cmd);
+	else
+	{
+		OwnerPawn->DoThrottle(0.f);
+		OwnerPawn->DoBrake(0.f);
+	}
 }
