@@ -1,15 +1,80 @@
 #include "DataVisual/Team7DTAgentDataLoggerComponent.h"
-
 #include "DrawDebugHelpers.h"
-#include "ChaosWheeledVehicleMovementComponent.h"
 #include "HAL/PlatformFileManager.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 
 UTeam7DTAgentDataLoggerComponent::UTeam7DTAgentDataLoggerComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
-	PrimaryComponentTick.bStartWithTickEnabled = true;
+	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bStartWithTickEnabled = false;
+}
+
+void UTeam7DTAgentDataLoggerComponent::HandleDriveState(const FDriveState& State)
+{
+	if (bIsRecording == false) 
+		return;
+	// 가속도 계산
+	float Acceleration = 0.f;
+	if (PreviousTimeStamp > 0.f)
+	{
+		const float Dt = State.TimeStamp - PreviousTimeStamp;
+		if (Dt > KINDA_SMALL_NUMBER)
+			Acceleration = (State.SpeedKmh - PreviousSpeedKmh) / Dt;
+	}
+	PreviousSpeedKmh  = State.SpeedKmh;
+	PreviousTimeStamp = State.TimeStamp;
+	
+	// UTM 변환
+	double UtmEasting = 0.0;
+	double UtmNorthing = 0.0;
+	WorldToUtm(State.Location, UtmEasting, UtmNorthing);
+
+	// CSV append
+	const FString Row = FString::Printf(
+		TEXT("%.3f,%.2f,%.2f,%.2f,%.4f,%.4f,%d,%.2f,%.4f,%.3f,%.3f,%.3f,%.2f\n"),
+		State.TimeStamp,
+		State.Location.X, State.Location.Y, State.Location.Z,
+		UtmEasting, UtmNorthing, OriginUtmZone,
+		State.SpeedKmh,
+		State.Rotation.Yaw,
+		State.Throttle, State.Steering, State.Brake,
+		Acceleration  
+	);
+
+	FFileHelper::SaveStringToFile(Row, *CsvFilePath,
+		FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM,
+		&IFileManager::Get(),
+		EFileWrite::FILEWRITE_Append);
+	
+	// 트래젝토리 라인 (속도 색)
+	Alpha = FMath::Clamp(State.SpeedKmh / MaxSpeedForDebug, 0.f, 1.f);
+	const FColor LineColor = FLinearColor::LerpUsingHSV(Green, Red, Alpha).ToFColor(true);
+	DrawDebugLine(GetWorld(), LastLocation, State.Location, LineColor, false, 10.f, 0, 2.f);
+
+	// 급감속 지점 표시
+	if (Acceleration < HardBrakeThreshold)
+	{
+		DrawDebugPoint(GetWorld(), State.Location,
+			20.f, FColor::Magenta, false, 30.f);
+	}
+
+	// DrawDebugString (일정 거리마다 속도/yaw)
+	const float DistMoved = FVector::Dist(LastDebugStringLocation, State.Location);
+	if (DistMoved >= DebugStringInterval)
+	{
+		const FString Info = FString::Printf(
+			TEXT("%.1f km/h\nYaw: %.1f°"),
+			State.SpeedKmh, State.Rotation.Yaw);
+
+		DrawDebugString(GetWorld(),
+			State.Location + FVector(0, 0, 100),
+			Info, nullptr, FColor::White, 30.f, false, 1.f);
+
+		LastDebugStringLocation = State.Location;
+	}
+
+	LastLocation = State.Location;
 }
 
 
@@ -21,7 +86,6 @@ void UTeam7DTAgentDataLoggerComponent::BeginPlay()
 	if (OwnerPawn)
 	{
 		LastLocation = OwnerPawn->GetActorLocation();
-		VehicleMovement = OwnerPawn->FindComponentByClass<UChaosWheeledVehicleMovementComponent>();
 	}
 
 	OriginUtmZone = GetUtmZone(OriginLongitude);
@@ -37,36 +101,6 @@ void UTeam7DTAgentDataLoggerComponent::EndPlay(EEndPlayReason::Type EndPlayReaso
 {
 	StopRecording();
 	Super::EndPlay(EndPlayReason);
-}
-
-void UTeam7DTAgentDataLoggerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	if (!bIsRecording)
-	{
-		return;
-	}
-
-	ElapsedRecordingTime += DeltaTime;
-	TimeSinceLastSave += DeltaTime;
-
-	const float SaveInterval = 1.0f / FMath::Max(SaveFrequencyHz, 0.1f);
-	if (TimeSinceLastSave >= SaveInterval)
-	{
-		AppendRow();
-		TimeSinceLastSave -= SaveInterval;
-
-		FVector CurrentLocation = GetOwner()->GetActorLocation();
-		float CurrentSpeed = FMath::Abs(VehicleMovement->GetForwardSpeed()) * 0.036f;
-		Alpha = FMath::Clamp(CurrentSpeed / MaxSpeedForDebug, 0.f, 1.f);
-		FLinearColor LerpedLinearColor = FLinearColor::LerpUsingHSV(Green, Red, Alpha);
-		FColor FinalColor = LerpedLinearColor.ToFColor(true);
-
-		DrawDebugLine(GetWorld(), LastLocation, CurrentLocation, FinalColor, false, 10.f, 0, 2.f);
-
-		LastLocation = CurrentLocation;
-	}
 }
 
 int32 UTeam7DTAgentDataLoggerComponent::GetUtmZone(double Longitude)
@@ -136,39 +170,6 @@ void UTeam7DTAgentDataLoggerComponent::WorldToUtm(const FVector& WorldLocation, 
 	OutNorthing = OriginUtmNorthing + OffsetNorthM;
 }
 
-void UTeam7DTAgentDataLoggerComponent::AppendRow()
-{
-	const AActor* Owner = GetOwner();
-	if (!Owner)
-		return;
-
-	const FVector WorldLoc = Owner->GetActorLocation();        // cm
-	const FRotator WorldRot = Owner->GetActorRotation();
-	const FVector Velocity = Owner->GetVelocity();             // cm/s
-
-	const double SpeedKmh = Velocity.Size() * 0.01 * 3.6;
-	const double Yaw = WorldRot.Yaw;
-
-	double UtmEasting = 0.0;
-	double UtmNorthing = 0.0;
-	WorldToUtm(WorldLoc, UtmEasting, UtmNorthing);
-
-	const FString Row = FString::Printf(
-		TEXT("%.3f,%.2f,%.2f,%.2f,%.4f,%.4f,%d,%.2f,%.4f\n"),
-		ElapsedRecordingTime,
-		WorldLoc.X, WorldLoc.Y, WorldLoc.Z,
-		UtmEasting, UtmNorthing, OriginUtmZone,
-		SpeedKmh,
-		Yaw
-	);
-
-	FFileHelper::SaveStringToFile(Row, *CsvFilePath,
-		FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM,
-		&IFileManager::Get(),
-		EFileWrite::FILEWRITE_Append
-	);
-}
-
 void UTeam7DTAgentDataLoggerComponent::StartRecording()
 {
 	if (bIsRecording)
@@ -178,8 +179,6 @@ void UTeam7DTAgentDataLoggerComponent::StartRecording()
 
 	CreateCsvFile();
 	bIsRecording = true;
-	TimeSinceLastSave = 0.0f;
-	ElapsedRecordingTime = 0.0f;
 }
 
 void UTeam7DTAgentDataLoggerComponent::StopRecording()
@@ -203,11 +202,12 @@ void UTeam7DTAgentDataLoggerComponent::CreateCsvFile()
 	CsvFilePath = FPaths::Combine(OutputDir, FileName);
 
 	const FString Header =
-		TEXT("Timestamp,World_X,World_Y,World_Z,UTM_Easting,UTM_Northing,UTM_Zone,Velocity_kmh,Yaw\n"
-		);
+		TEXT("Timestamp,World_X,World_Y,World_Z,UTM_Easting,UTM_Northing,UTM_Zone,"
+			 "Velocity_kmh,Yaw,Throttle,Steering,Brake,Acceleration_kmh_per_s\n");
+	
 	FFileHelper::SaveStringToFile(Header, *CsvFilePath,
 		FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM
 	);
 
-	UE_LOG(LogTemp, Log, TEXT("[AgentDataLogger] Recording to: %s  (%.1f Hz)"), *CsvFilePath, SaveFrequencyHz);
+	UE_LOG(LogTemp, Log, TEXT("[AgentDataLogger] Recording to: %s"), *CsvFilePath);
 }
