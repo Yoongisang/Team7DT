@@ -10,6 +10,7 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "TimerManager.h"
 #include "Component/SplineFollowerComponent.h"
+#include "Team7DTPlayerController.h"
 #include "Sensor/LidarSensorComponent.h"
 #include "Sensor/CameraSensorComponent.h"
 #include "Sensor/LidarBevRenderer.h"
@@ -266,14 +267,25 @@ void ATeam7DTVehicle::DoToggleCamera()
 
 void ATeam7DTVehicle::DoToggleSensorView()
 {
-	// TODO: PlayerController + SensorViewWidget 연결
-	// CameraSensor의 RenderTarget을 위젯에 전달
-	UE_LOG(LogTemp, Log, TEXT("ToggleSensorView called"));
+	auto* PC = Cast<ATeam7DTPlayerController>(GetController());
+	if (!PC || !CameraSensor) return;
+
+	UTextureRenderTarget2D* RT = CameraSensor->RenderTarget;
+	PC->ToggleSensorView(RT);
 }
 
 void ATeam7DTVehicle::DoToggleLidarView()
 {
-	// TODO: PlayerController + SensorViewWidget 연결
-	// BevRenderer의 RenderTarget을 위젯에 전달
-	UE_LOG(LogTemp, Log, TEXT("ToggleLidarView called"));
+	auto* PC = Cast<ATeam7DTPlayerController>(GetController());
+	if (!PC || !BevRenderer) return;
+
+	UTexture2D* LidarTex = BevRenderer->GetRenderTarget();
+	PC->ToggleLidarView(LidarTex);
+
+	// LiDAR가 안 보일 때는 스캔 정지 (성능 최적화)
+	if (LidarSensor)
+	{
+		if (PC->IsLidarViewVisible())  LidarSensor->StartScan();
+		else                            LidarSensor->StopScan();
+	}
 }

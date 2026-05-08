@@ -55,13 +55,15 @@ public:
 	
 	FORCEINLINE UCameraComponent* GetFrontCamera() const { return FrontCamera; }
 	FORCEINLINE UCameraComponent* GetBackCamera() const { return BackCamera; }
+	FORCEINLINE UChaosWheeledVehicleMovementComponent* GetChaosVehicleMovement() const { return ChaosVehicleMovement; }
+	
 	// 델리게이트
 	FOnDriveStateUpdated OnDriveStateUpdated;
 	FOnSimulationStarted OnSimulationStarted;
 	FOnSimulationStopped OnSimulationStopped;
 	
 protected:
-	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponentPlayerInputComponent) override;
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void BeginPlay() override;
 	virtual void EndPlay(EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float Delta) override;
