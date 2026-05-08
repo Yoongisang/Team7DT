@@ -9,7 +9,7 @@
 
 ## 🎬 시연 영상
 
-> [영상 링크 추가]
+> (https://youtu.be/P9ZdJjwxMa0)
 
 브랜치 구조:
 ```
@@ -268,18 +268,11 @@ Source/Team7DT/
 
 ---
 
-## 📜 라이선스 / 크레딧
-
-스파르타 스킬업 프로젝트 7조 — 자율 주행 디지털 트윈 시뮬레이터
-
-- **베이스 코드:** SplineFollowerComponent (강사 제공)
-- **차량 메시:** UE5 Vehicle Template (Epic Games)
-- **참조 프로젝트:** DigitalTwinNbc (강사 레퍼런스)
-
----
-
 ## 📎 첨부 문서
 
-- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — 시스템 아키텍처 상세
-- [`TEST_SCENARIO.md`](./TEST_SCENARIO.md) — 통합 테스트 시나리오
-- [`테스트결과.md`](./테스트결과.md) — L4 튜닝 실험 보고서
+| 문서 | 레이어 | 내용 |
+|------|--------|------|
+| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | L5 | 시스템 아키텍처 + Mermaid 다이어그램 |
+| [`테스트결과.md`](./테스트결과.md) | **L4** | 자동주행 튜닝 실험 보고서 (랩타임 39.22초 달성) |
+| [`docs/AgentData-Sample.csv`](./docs/AgentData-Sample.csv) | **L1** | 주행 데이터 샘플 (108초, 1080행) |
+| [`docs/L1_DataAnalysisReport.md`](./docs/L1_DataAnalysisReport.md) | **L1** | 주행 데이터 분석 리포트 |
